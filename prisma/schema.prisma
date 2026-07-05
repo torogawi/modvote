@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// NextAuth Standard Models (For Discord Auth)
+// ==========================================
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ==========================================
+// ModVote Core Models
+// ==========================================
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          String    @default("PLAYER") // "PLAYER" or "ADMIN"
+  accounts      Account[]
+  sessions      Session[]
+  votes         Vote[]
+}
+
+model VotingSession {
+  id         String         @id @default(cuid())
+  startDate  DateTime       @default(now())
+  endDate    DateTime
+  status     SessionStatus  @default(OPEN)
+  candidates ModCandidate[]
+  votes      Vote[]
+}
+
+model ModCandidate {
+  id          String        @id @default(cuid())
+  sessionId   String
+  modrinthId  String
+  name        String
+  description String?       @db.Text
+  iconUrl     String?
+  voteCount   Int           @default(0)
+  
+  session     VotingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  votes       Vote[]
+
+  @@unique([sessionId, modrinthId]) // A mod can only appear once per session
+}
+
+model Vote {
+  id          String       @id @default(cuid())
+  userId      String
+  sessionId   String
+  candidateId String
+  createdAt   DateTime     @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session     VotingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  candidate   ModCandidate  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  // Sybil Resistance: A user can only vote ONCE per session
+  @@unique([userId, sessionId]) 
+}
+
+model InstalledMod {
+  id            String   @id @default(cuid())
+  modrinthId    String   @unique
+  name          String
+  dateInstalled DateTime @default(now())
+  isActive      Boolean  @default(true)
+}
+
+enum SessionStatus {
+  OPEN
+  CLOSED
+  DEPLOYED
+  FAILED // If rollback occurs
+}
+
+model SystemSettings {
+  id                 String   @id @default("default") // Only one row will ever exist
+  adminDiscordId     String   // Your Discord ID goes here
+  serverVersion      String   @default("1.20.4")
+  modLoader          String   @default("fabric")
+  voteDurationDays   Int      @default(7)
+  allowedCategories  String   @default("adventure,magic,technology,worldgen,food")
+}
