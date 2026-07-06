@@ -1,26 +1,84 @@
 // app/page.tsx
 import { prisma } from "@/lib/prisma"
 import Navbar from "@/components/Navbar"
-import VoteCard from "@/components/VoteCard"
-import SyncButton from "@/components/SyncButton"
-import { createVotingSession } from "@/app/actions/voting"
-import { endSessionAndDeploy } from "@/app/actions/deploy"
+import BallotGrid from "@/components/BallotGrid"
+import { getServerSession } from "next-auth/next"
+import { authOptions } from "@/lib/auth"
 
 export default async function Home() {
-  // 1. Fetch the currently OPEN voting session
+  const session = await getServerSession(authOptions);
+  const settings = await prisma.systemSettings.findUnique({ where: { id: "default" } });
+  
+  // ==========================================
+  // UNLOGGED IN VIEW (THE GUIDE)
+  // ==========================================
+  if (!session?.user) {
+    return (
+      <main className="max-w-6xl mx-auto min-h-screen flex flex-col">
+        <Navbar />
+        <div className="p-6 mt-8 max-w-4xl mx-auto w-full">
+          <div className="bg-gray-800 p-8 rounded-2xl border border-gray-700 shadow-2xl text-center mb-8">
+            <h1 className="text-4xl font-extrabold text-white mb-4">Welcome to the Server!</h1>
+            <p className="text-gray-400 text-lg mb-8">Please log in with Discord in the top right to view this week's mod ballot.</p>
+          </div>
+
+          <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-lg">
+            <h2 className="text-2xl font-bold text-indigo-400 mb-6">🛠️ How to join the server</h2>
+            
+            <div className="space-y-6 text-gray-300">
+              <div className="flex gap-4 items-start">
+                <div className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">1</div>
+                <div>
+                  <h3 className="text-white font-bold text-lg">Install Fabric Loader</h3>
+                  <p className="mb-2">You need the Fabric Mod Loader for Minecraft {settings?.serverVersion || "1.21.1"}.</p>
+                  <a href="https://fabricmc.net/use/installer/" target="_blank" className="text-indigo-400 hover:underline text-sm font-bold">Download Fabric Installer ↗</a>
+                </div>
+              </div>
+
+              <div className="flex gap-4 items-start">
+                <div className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">2</div>
+                <div>
+                  <h3 className="text-white font-bold text-lg">Install AutoModpack</h3>
+                  <p className="mb-2">Download AutoModpack and put it in your <code>%appdata%/.minecraft/mods</code> folder.</p>
+                  <a href="https://modrinth.com/mod/automodpack/versions" target="_blank" className="text-indigo-400 hover:underline text-sm font-bold">Download AutoModpack ↗</a>
+                </div>
+              </div>
+
+              <div className="flex gap-4 items-start">
+                <div className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">3</div>
+                <div>
+                  <h3 className="text-white font-bold text-lg">Join the Server</h3>
+                  <p className="mb-2">Launch Minecraft using the Fabric Profile, click Multiplayer, and join using this IP:</p>
+                  <code className="bg-black px-3 py-1 rounded border border-gray-700 text-green-400 font-mono text-lg">{settings?.serverIp || "IP Not Set"}</code>
+                </div>
+              </div>
+
+              <div className="flex gap-4 items-start">
+                <div className="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">4</div>
+                <div>
+                  <h3 className="text-white font-bold text-lg">Verify the Connection</h3>
+                  <p className="mb-2">When joining for the first time, AutoModpack will ask you for a fingerprint to verify the server is safe. Paste this exact code:</p>
+                  <code className="bg-black px-3 py-1 rounded border border-gray-700 text-yellow-400 font-mono text-sm break-all">{settings?.automodpackFingerprint || "Fingerprint Not Set"}</code>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  // ==========================================
+  // LOGGED IN VIEW (THE BALLOT)
+  // ==========================================
   const currentSession = await prisma.votingSession.findFirst({
     where: { status: "OPEN" },
-    include: {
-      candidates: {
-        orderBy: { voteCount: 'desc' } 
-      }
-    }
+    include: { candidates: { orderBy: { voteCount: 'desc' } } }
   });
 
-  // 2. Fetch the "Hall of Fame" (All active mods installed on the server)
   const installedMods = await prisma.installedMod.findMany({
     where: { isActive: true },
-    orderBy: { dateInstalled: 'desc' } // Shows the newest mods at the top
+    orderBy: { dateInstalled: 'desc' } 
   });
 
   return (
@@ -28,21 +86,10 @@ export default async function Home() {
       <Navbar />
 
       <div className="p-6 mt-8 flex-grow">
-        
-        {/* ================= VOTING SECTION ================= */}
         {!currentSession ? (
           <div className="text-center p-12 bg-gray-800 rounded-xl border border-gray-700 mb-12 shadow-lg">
             <h2 className="text-3xl font-extrabold mb-4 text-white">No active voting session</h2>
             <p className="text-gray-400 mb-8">The next voting period will begin soon. Check out the installed mods below!</p>
-            
-            <form action={async () => {
-              "use server"
-              await createVotingSession() 
-            }}>
-              <button type="submit" className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-md font-bold transition text-white shadow-md">
-                Admin: Generate New Ballot
-              </button>
-            </form>
           </div>
         ) : (
           <div className="mb-16">
@@ -53,35 +100,18 @@ export default async function Home() {
               <p className="text-gray-300 mb-6 bg-gray-800 px-4 py-1 rounded-full border border-gray-700 shadow-sm">
                 ⏳ Voting ends on: <span className="font-semibold text-white">{new Date(currentSession.endDate).toLocaleDateString()}</span>
               </p>
-              
-              <form action={async () => {
-                "use server"
-                await endSessionAndDeploy(); 
-              }}>
-                <button type="submit" className="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-md font-bold transition text-white text-sm shadow-lg border border-red-400 flex items-center gap-2">
-                  <span>⚠️</span> Admin: End Voting & Install Winner
-                </button>
-              </form>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {currentSession.candidates.map((mod) => (
-                <VoteCard key={mod.id} mod={mod} sessionId={currentSession.id} />
-              ))}
-            </div>
+            {/* THE NEW SMART GRID */}
+            <BallotGrid candidates={currentSession.candidates} sessionId={currentSession.id} />
           </div>
         )}
 
-        {/* ================= HALL OF FAME ================= */}
+        {/* HALL OF FAME */}
         <div className="mt-8">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-4 flex-grow">
-              <h2 className="text-2xl font-bold text-white">🏆 Server Hall of Fame</h2>
-              <div className="h-px bg-gray-700 flex-grow hidden md:block"></div>
-            </div>
-            
-            {/* The Auto-Sync Button we created above */}
-            <SyncButton />
+          <div className="flex items-center gap-4 mb-6">
+            <h2 className="text-2xl font-bold text-white">🏆 Server Hall of Fame</h2>
+            <div className="h-px bg-gray-700 flex-grow"></div>
           </div>
 
           {installedMods.length === 0 ? (
@@ -92,18 +122,13 @@ export default async function Home() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {installedMods.map((mod) => (
                 <div key={mod.id} className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex flex-col justify-between hover:border-gray-500 transition">
-                  <h3 className="font-bold text-lg text-indigo-400 truncate" title={mod.name}>
-                    {mod.name}
-                  </h3>
-                  <p className="text-xs text-gray-400 mt-2">
-                    Installed: {new Date(mod.dateInstalled).toLocaleDateString()}
-                  </p>
+                  <h3 className="font-bold text-lg text-indigo-400 truncate" title={mod.name}>{mod.name}</h3>
+                  <p className="text-xs text-gray-400 mt-2">Installed: {new Date(mod.dateInstalled).toLocaleDateString()}</p>
                 </div>
               ))}
             </div>
           )}
         </div>
-
       </div>
     </main>
   );
