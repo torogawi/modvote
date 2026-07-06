@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma"
 import Navbar from "@/components/Navbar"
 import BallotGrid from "@/components/BallotGrid"
+import CountdownTimer from "@/components/CountdownTimer"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 
@@ -97,12 +98,13 @@ export default async function Home() {
               <h2 className="text-4xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 pb-2">
                 Vote for next week's Mod!
               </h2>
-              <p className="text-gray-300 mb-6 bg-gray-800 px-4 py-1 rounded-full border border-gray-700 shadow-sm">
-                ⏳ Voting ends on: <span className="font-semibold text-white">{new Date(currentSession.endDate).toLocaleDateString()}</span>
+              <p className="text-gray-300 mb-6 flex flex-col md:flex-row items-center justify-center gap-3 bg-gray-800 px-5 py-3 rounded-xl border border-gray-700 shadow-sm">
+                <span>⏳ Voting ends on: {new Date(currentSession.endDate).toLocaleDateString()}</span>
+                <CountdownTimer endDate={currentSession.endDate} />
               </p>
             </div>
 
-            {/* THE NEW SMART GRID */}
+            {/* THE SMART GRID */}
             <BallotGrid candidates={currentSession.candidates} sessionId={currentSession.id} />
           </div>
         )}

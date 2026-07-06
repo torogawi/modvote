@@ -102,3 +102,23 @@ export async function syncServerData() {
 
   return { detectedVersion, installedFiles };
 }
+
+// Add this to the BOTTOM of lib/pterodactyl.ts
+
+export async function sendServerCommand(command: string) {
+  const url = `${process.env.PTERO_URL}/api/client/servers/${process.env.PTERO_SERVER_ID}/command`;
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.PTERO_API_KEY}`,
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
+    body: JSON.stringify({ command })
+  });
+
+  if (!response.ok) {
+    console.error(`Failed to send command to server: ${await response.text()}`);
+  }
+}
