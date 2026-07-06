@@ -1,3 +1,5 @@
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,9 +9,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==========================================
-// NextAuth Standard Models (For Discord Auth)
-// ==========================================
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -36,16 +35,13 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ==========================================
-// ModVote Core Models
-// ==========================================
 model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  role          String    @default("PLAYER") // "PLAYER" or "ADMIN"
+  role          String    @default("PLAYER")
   accounts      Account[]
   sessions      Session[]
   votes         Vote[]
@@ -72,7 +68,7 @@ model ModCandidate {
   session     VotingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   votes       Vote[]
 
-  @@unique([sessionId, modrinthId]) // A mod can only appear once per session
+  @@unique([sessionId, modrinthId])
 }
 
 model Vote {
@@ -86,7 +82,6 @@ model Vote {
   session     VotingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   candidate   ModCandidate  @relation(fields: [candidateId], references: [id], onDelete: Cascade)
 
-  // Sybil Resistance: A user can only vote ONCE per session
   @@unique([userId, sessionId]) 
 }
 
@@ -102,14 +97,16 @@ enum SessionStatus {
   OPEN
   CLOSED
   DEPLOYED
-  FAILED // If rollback occurs
+  FAILED
 }
 
 model SystemSettings {
-  id                 String   @id @default("default") // Only one row will ever exist
-  adminDiscordId     String   // Your Discord ID goes here
-  serverVersion      String   @default("1.20.4")
-  modLoader          String   @default("fabric")
-  voteDurationDays   Int      @default(7)
-  allowedCategories  String   @default("adventure,magic,technology,worldgen,food")
+  id                     String   @id @default("default") 
+  adminDiscordId         String   
+  serverVersion          String   @default("1.21.1")
+  modLoader              String   @default("fabric")
+  voteDurationDays       Int      @default(7)
+  allowedCategories      String   @default("adventure,magic,technology,worldgen,food")
+  serverIp               String   @default("play.pebblehost.com")
+  automodpackFingerprint String   @default("Copy fingerprint from console")
 }
