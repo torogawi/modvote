@@ -34,7 +34,7 @@ export default async function AdminPanel() {
         </div>
 
         {/* === STANDARD SETTINGS === */}
-        <form action={saveSettings} className="bg-gray-800 p-6 rounded-xl border border-gray-700 flex flex-col gap-4">
+        <form action={async (formData) => { "use server"; await saveSettings(formData); }} className="bg-gray-800 p-6 rounded-xl border border-gray-700 flex flex-col gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-1">Minecraft Version (Auto-Synced if available)</label>
             <input type="text" name="serverVersion" defaultValue={settings?.serverVersion || "1.21.1"} className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white" />
