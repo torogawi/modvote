@@ -21,31 +21,40 @@ export async function getSettings() {
   return await prisma.systemSettings.findUnique({ where: { id: "default" } });
 }
 
+// Replace JUST the saveSettings function in app/actions/admin.ts
 export async function saveSettings(formData: FormData) {
   const isAdmin = await checkAdmin();
   if (!isAdmin) return { error: "Unauthorized. You are not the admin." };
 
   const session = await getServerSession(authOptions);
 
+  // Safety Fallbacks to prevent 500 Server Errors!
+  const serverVersion = (formData.get("serverVersion") as string) || "1.21.1";
+  const modLoader = (formData.get("modLoader") as string) || "fabric";
+  const voteDurationDays = parseInt((formData.get("voteDurationDays") as string) || "7");
+  const allowedCategories = (formData.get("allowedCategories") as string) || "adventure,magic,technology,worldgen,food";
+  const serverIp = (formData.get("serverIp") as string) || "";
+  const automodpackFingerprint = (formData.get("automodpackFingerprint") as string) || "";
+
   await prisma.systemSettings.upsert({
     where: { id: "default" },
     update: {
-      serverVersion: formData.get("serverVersion") as string,
-      modLoader: formData.get("modLoader") as string,
-      voteDurationDays: parseInt(formData.get("voteDurationDays") as string),
-      allowedCategories: formData.get("allowedCategories") as string,
-      serverIp: formData.get("serverIp") as string,
-      automodpackFingerprint: formData.get("automodpackFingerprint") as string,
+      serverVersion,
+      modLoader,
+      voteDurationDays,
+      allowedCategories,
+      serverIp,
+      automodpackFingerprint
     },
     create: {
       id: "default",
       adminDiscordId: session!.user!.id,
-      serverVersion: formData.get("serverVersion") as string,
-      modLoader: formData.get("modLoader") as string,
-      voteDurationDays: parseInt(formData.get("voteDurationDays") as string),
-      allowedCategories: formData.get("allowedCategories") as string,
-      serverIp: formData.get("serverIp") as string,
-      automodpackFingerprint: formData.get("automodpackFingerprint") as string,
+      serverVersion,
+      modLoader,
+      voteDurationDays,
+      allowedCategories,
+      serverIp,
+      automodpackFingerprint
     }
   });
 

@@ -88,6 +88,13 @@ export default async function AdminPanel() {
             <label className="block text-sm font-medium text-gray-400 mb-1">Minecraft Version</label>
             <input type="text" name="serverVersion" defaultValue={settings?.serverVersion || "1.21.1"} className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white" />
           </div>
+	 <div>
+            <label className="block text-sm font-medium text-gray-400 mb-1">Mod Loader</label>
+            <select name="modLoader" defaultValue={settings?.modLoader || "fabric"} className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white">
+              <option value="fabric">Fabric</option>
+              <option value="forge">Forge</option>
+            </select>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-1">Vote Duration (Days)</label>
             <input type="number" name="voteDurationDays" defaultValue={settings?.voteDurationDays || 7} className="w-full bg-gray-900 border border-gray-600 rounded p-2 text-white" />
